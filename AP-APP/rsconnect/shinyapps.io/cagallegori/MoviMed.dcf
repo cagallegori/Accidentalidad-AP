@@ -1,0 +1,13 @@
+name: MoviMed
+title: MoviMed
+username:
+account: cagallegori
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2733477
+bundleId: 3581847
+url: https://cagallegori.shinyapps.io/MoviMed/
+when: 1599002532.7449
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: MapaCargue.csv|Mapas.nb.html|Mapas.Rmd|Transformación.Rmd|Barrio_Vereda-shp/Barrio_Vereda.cpg|Barrio_Vereda-shp/Barrio_Vereda.dbf|Barrio_Vereda-shp/Barrio_Vereda.prj|Barrio_Vereda-shp/Barrio_Vereda.shp|Barrio_Vereda-shp/Barrio_Vereda.shx

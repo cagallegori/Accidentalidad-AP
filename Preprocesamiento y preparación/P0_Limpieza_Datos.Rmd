@@ -1,0 +1,168 @@
+---
+title: "Preprocesamiento y preparación de datos para modelos de predicción y agrupamiento de la accidentalidad en Medellín"
+author: "Daniel Ceballos, Maria Isabel Correa, Carolina Gallego, Esteban Mejía & Daniel Tejada. <br><br> Analítica Predictiva <br> Universidad Nacional de Colombia <br> Facultad de Minas <br> Medellín"
+output: 
+   html_document:
+      theme: lumen
+      highlight: haddock
+      number_sections: true
+      df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introducción
+A lo largo de este trabajo, se buscará comprender la accidentalidad en Medellín y utilizar los datos abiertos publicados por la Alcaldía de Medellín en el portal web [GEOMEDELLÍN](https://www.medellin.gov.co/geomedellin/). El objetivo final de este trabajo es predecir la accidentalidad en Medellín y agrupar los barrios de la ciudad de acuerdo a su accidentalidad. Sin embargo, antes de comenzar a trabajar formalmente con los datos se realizará una limpieza rápida de los mismos, la cuál se irá puliendo conforme sea necesario.
+
+# Carga de datos
+El primer paso consiste en cargar el dataset. Previamente se combinaron en Excel los datos anuales de 2014 a 2018, se crearon algunas columnas auxiliares y se unificó la escritura de algunos registros.
+```{r}
+setwd("~/Google Drive File Stream/Mi unidad/Especialización en Analítica/Analítca Predictiva [AP]/Trabajo Final AP")
+Data <- read.csv("Datos/Consolidado Final.csv", sep=";", stringsAsFactors = TRUE)
+head(Data)
+```
+# Limpieza
+Originalmente se contaba con un dataset con `r dim(Data)[1]` filas y `r dim(Data)[2]` columnas. En equipo se analizaron una a una las columnas de nuestro dataset y se optó por eliminar aquellas cuya información está duplicada o que no aportan datos valiosos. La columna hora fue eliminada dado que al analizarla notamos que solo contiene horas en la tarde, lo que nos hace creer que se trata de un error de imputación.
+
+```{r}
+Delete <- c("OBJECTID","X", "Y", "RADICADO", "HORA", "BARRIO", "COMUNA", "DIRECCION_ENC", "MES_NOMBRE")
+Data <- Data[ ,!(names(Data) %in% Delete)]
+head(Data)
+```
+Luego de esta eliminación de variables, nuestro dataset tiene dimensiones `r dim(Data)[1]`x`r dim(Data)[2]`.
+
+## Tipo de variable {.tabset .tabset-fade .tabset-pills}
+Ahora ajustaremos el tipo de variable según los datos que contiene:
+
+### Fecha
+La columna que contiene las fechas es de tipo `r class(Data$FECHA)`, por tanto, cambiamos la clase de la columna a `Date`:
+```{r}
+Data$FECHA<-as.Date(Data$FECHA)
+summary(Data$FECHA)
+```
+
+### ¿Variables Factor?
+```{r}
+Data$DIRECCION <- as.character(Data$DIRECCION)
+Data$MES <- as.factor(Data$MES)
+summary(Data)
+```
+
+## Missing Values
+En el `summary` anterior se hizo notable que nuestro dataset contiene varios **missing values** en las columnas relacionadas con las comunas y los barrios. Primero revisemos aquellos registros con CBML pero sin dato en la variable `BARRIO.REAL`.
+```{r}
+unique((Data$CBML[Data$BARRIO.REAL=="" & Data$CBML!=""]))
+```
+
+Se consultó en los datos de la Alcaldía a qué barrio correspondían los anteriores CBML y se asignaron:
+```{r}
+Data$BARRIO.REAL[Data$CBML=="Inst_18"] <- "Cerro Nutibara"
+Data$COMUNA.REAL[Data$CBML=="Inst_18"] <- "BELEN"
+Data$BARRIO.REAL[Data$CBML=="Inst_16"] <- "La Alpujarra"
+Data$COMUNA.REAL[Data$CBML=="Inst_16"] <- "LA CANDELARIA"
+Data$BARRIO.REAL[Data$CBML=="Inst_19"] <- "Parque Juan Pablo II"
+Data$COMUNA.REAL[Data$CBML=="Inst_19"] <- "GUAYABAL"
+Data$BARRIO.REAL[Data$CBML=="Inst_3"] <- "Cementerio Universal"
+Data$COMUNA.REAL[Data$CBML=="Inst_3"] <- "CASTILLA"
+Data$BARRIO.REAL[Data$CBML=="Inst_14"] <- "U.D. Atanasio Girardot"
+Data$COMUNA.REAL[Data$CBML=="Inst_14"] <- "LAURELES"
+Data$BARRIO.REAL[Data$CBML=="AUC1"] <- "Cabecera Urbana San Cristobal"
+Data$COMUNA.REAL[Data$CBML=="AUC1"] <- "SAN CRISTOBAL"
+Data$BARRIO.REAL[Data$CBML=="AUC2"] <- "Cabecera San Antonio de Prado"
+Data$COMUNA.REAL[Data$CBML=="AUC2"] <- "SAN ANTONIO DE PRADO"
+Data$BARRIO.REAL[Data$CBML=="SN01"] <- "Juan XXIII La Quiebra"
+Data$COMUNA.REAL[Data$CBML=="SN01"] <- "SAN JAVIER"
+Data$BARRIO.REAL[Data$CBML=="60"] <- "Cabecera Urbana San Cristobal"
+Data$COMUNA.REAL[Data$CBML=="60"] <- "SAN CRISTOBAL"
+Data$BARRIO.REAL[Data$CBML=="16"] <- "Diego Echavarría"
+Data$COMUNA.REAL[Data$CBML=="16"] <- "BELEN"
+Data$BARRIO.REAL[Data$CBML=="10"] <- "La Alpujarra"
+Data$COMUNA.REAL[Data$CBML=="10"] <- "LA CANDELARIA"
+Data$BARRIO.REAL[Data$CBML=="0"] <- "La Florida"
+Data$COMUNA.REAL[Data$CBML=="0"] <- "SAN ANTONIO DE PRADO"
+```
+
+Además, eliminamos `r dim(Data[Data$TIPO_GEOCOD=="No Ubicada" & Data$DIRECCION=="CR 999 CL 999",])[1]` registros, de los cuales no tenemos información confiable sobre su ubicación.
+```{r}
+Data<-Data[Data$TIPO_GEOCOD!="No Ubicada" & Data$DIRECCION!="CR 999 CL 999",]
+#write.csv(Data, file="Datos/Consolidado2.csv", row.names = F)
+```
+
+Revisemos los registros que quedan con COMUNA.REAL vacía que sí tienen una dirección coherente
+```{r}
+DComuna <- Data[Data$COMUNA.REAL=="",]
+sort(unique(DComuna$DIRECCION))
+```
+
+Al parecer varias direcciones se repiten muchas veces, notemos que de `r dim(DComuna)[1]` tenemos `r length(unique(DComuna$DIRECCION))` valores únicos. Note que en los registros con dirección "Tramo 8 ..." hay valores con la misma dirección escrita de dos maneras, solucionamos esto:
+```{r}
+DComuna$DIRECCION <- gsub("KM", "Kilometro", DComuna$DIRECCION)
+DComuna$DIRECCION <- gsub("sur", "Sur", DComuna$DIRECCION)
+Data$DIRECCION <- gsub("KM", "Kilometro", Data$DIRECCION)
+Data$DIRECCION <- gsub("sur", "Sur", Data$DIRECCION)
+sort(unique(DComuna$DIRECCION))
+```
+
+Ahora revisemos cuantos registros tenemos por dirección:
+```{r}
+Direc <- as.data.frame(table(DComuna$DIRECCION))
+Direc[order(-Direc$Freq),]
+```
+
+Al revisar los datos con dirección "CL 12 Sur CR 50" notamos que en el Dataset ya está identificado a que BARRIO y COMUNA corresponde.
+```{r}
+unique(Data[Data$DIRECCION=="CL 12 Sur CR 50",c("LONGITUD","LATITUD","COMUNA.REAL","BARRIO.REAL")])
+```
+
+Así que solo reemplazamos:
+```{r}
+Data$BARRIO.REAL[Data$DIRECCION=="CL 12 Sur CR 50"] <- "Santa María de los Ángeles"
+Data$COMUNA.REAL[Data$DIRECCION=="CL 12 Sur CR 50"] <- "EL POBLADO"
+```
+ 
+### Imputación por dirección {.tabset .tabset-fade .tabset-pills}
+Realizamos este procedimiento con las demás direcciones y modificamos los registros con coincidencias:
+
+#### CL 12 Sur CR 49
+```{r}
+unique(Data[Data$DIRECCION=="CL 12 Sur CR 49",c("LONGITUD","LATITUD","COMUNA.REAL","BARRIO.REAL")])
+```
+```{r}
+Data$BARRIO.REAL[Data$DIRECCION=="CL 12 Sur CR 49"] <- "La Aguacatala"
+Data$COMUNA.REAL[Data$DIRECCION=="CL 12 Sur CR 49"] <- "EL POBLADO"
+```
+
+#### CL 12 Sur CR 50 C
+```{r}
+unique(Data[Data$DIRECCION=="CL 12 Sur CR 50 C",c("LONGITUD","LATITUD","COMUNA.REAL","BARRIO.REAL")])
+```
+```{r}
+Data$BARRIO.REAL[Data$DIRECCION=="CL 12 Sur CR 50 C"] <- "Guayabal"
+Data$COMUNA.REAL[Data$DIRECCION=="CL 12 Sur CR 50 C"] <- "GUAYABAL"
+```
+
+#### CL 12 A Sur CR 52
+```{r}
+unique(Data[Data$DIRECCION=="CL 12 A Sur CR 52",c("LONGITUD","LATITUD","COMUNA.REAL","BARRIO.REAL")])
+```
+```{r}
+Data$BARRIO.REAL[Data$DIRECCION=="CL 12 A Sur CR 52"] <- "La Colina"
+Data$COMUNA.REAL[Data$DIRECCION=="CL 12 A Sur CR 52"] <- "GUAYABAL"
+```
+
+#### CL 12 Sur CR 51
+```{r}
+unique(Data[Data$DIRECCION=="CL 12 Sur CR 51" |Data$DIRECCION=="CL 12 Sur CR 50 A" ,c("LONGITUD","LATITUD","COMUNA.REAL","BARRIO.REAL")])
+```
+```{r}
+Data$BARRIO.REAL[Data$DIRECCION=="CL 12 Sur CR 51"] <- "Guayabal"
+Data$COMUNA.REAL[Data$DIRECCION=="CL 12 Sur CR 51"] <- "GUAYABAL"
+````
+
+###  {.unlisted .unnumbered}
+Ahora tenemos solo `r dim(Data[Data$COMUNA.REAL=="",])[1]` registros sin comuna. Estos registros fueron corregidos manualmente en Excel asignando la comuna y barrio más cercanos, adicionalmente a los registros cuyas coordenadas se ubican sobre la VIA LAS PALMAS se les asignó como BARRIO y COMUNA: "VIA LAS PALMAS". A partir de este nuevo dataset se crearan nuevas tablas que permitan trabajar por una parte, la predicción y por otra el agrupamiento, el análisis descriptivo de los datos se evidenciará a lo largo del trabajo.
+
+# Enlaces de interés
+Este documento contiene solo el pre-procesamiento de los datos necesario para lograr los objetivos propuestos en el trabajo. En el repositorio de Github [Accidentalidad-AP](https://github.com/cagallegori/Accidentalidad-AP) se encuentra el material adicional y los informes adicionales relacionados con la predicción y el agrupamiento.

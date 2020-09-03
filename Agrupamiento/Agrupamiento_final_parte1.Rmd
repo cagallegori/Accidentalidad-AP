@@ -1,0 +1,827 @@
+---
+title: "Clasificación de barrios de la ciudad de Medellín por accidentalidad"
+author: "Daniel Ceballos, Maria Isabel Correa, Carolina Gallego, Esteban Mejía & Daniel Tejada. <br><br> Analítica Predictiva <br> Universidad Nacional de Colombia <br> Facultad de Minas <br> Medellín"
+
+date: "Septiembre 2020"
+
+output: 
+   html_document:
+      theme: lumen
+      highlight: haddock
+      number_sections: true
+      df_print: paged
+      toc: true
+      toc_float:
+        collapsed: false
+
+---
+
+Son importadas las siguientes librerias: 
+
+```{r, warning=FALSE, message=FALSE}
+library(readr)
+library(readxl)
+library(plotly)
+library(data.table)  
+library(plyr)
+library(dplyr)
+library(data.table)
+library(fastDummies)
+library(factoextra)
+library(ggplot2)
+library(tidyr)
+```
+
+# Definición de variables a utilizar
+
+En total en el agrupamiento se usaron 63 variables, discriminando por 4 bloques principales que consideramos importantes
+**Promedios días de la Semana**: Corresponde a cada uno de los días de la semana promediado en las 261 veces que se registraba en los años del 2014-2018
+
+**Promedios meses del año**: Corresponde al promedio de cada uno de los meses en los 5 años, buscando encontrar el comportamiento de cada uno de los meses con respecto al número de accidentes ocurridos. 
+
+**Promedio mensual ocurrido en cada uno de los diseños viales registrados**: para este caso se registraron el promedio de accidentes mensuales en los 5 años que ocurrían en cada uno de las categorías registradas como diseño en las bases iniciales como lo son-
+**Ciclo Ruta** -- **Glorieta** -- **Intersección**--**Lote**--**Paso a nivel**--*Paso elevado**--	**Paso inferior**--**Ponton Mes**--**Puente**--**Tramo Via**--**Tunel**--**Via Peatonal** 
+
+**Promedio días especiales**: Se definieron fechas especiales a analizar y se realizó un promedio de los accidentes ocurridos durante los 5 años analizados en las siguientes fechas **D_madre**--**N_buena**--**Navidad**--**Feria_Flores**--**1_enero** 
+Y adicional bajo un previo análisis se escogieron días puntuales del mes que registraron altos indices de accidentalidad.
+**Dia_5 Prom**	**Dia 10 Prom** 	**Dia 21 Prom** 	**Dia 23 Prom** 	**Dia 16 Prom** 	**Dia 17 Prom** 	**Dia 18 Prom**
+
+***NOTA***: El cálculo de los promedios y el orden de las variables se obtuvo a través de un proceso en **Excel** realizado previamente, donde se ordenaron la variables desde la base de datos inicial obtenida en la limpieza de los datos y se obtuvo la siguiente tabla.
+
+```{r echo = FALSE, warning=FALSE,message= FALSE}
+Datos_Agrupamiento <- read.csv("datos_agrupamiento_BD1 (Promedios)1.csv",sep =';')
+head(Datos_Agrupamiento)
+```
+
+# Análisis descriptivo
+
+Comenzamos a través de un summary que nos permita identificar condiciones particulares de cada una de las variables.
+
+```{r echo = FALSE, warning=FALSE,message= FALSE}
+summary(Datos_Agrupamiento)
+```
+```{r echo = FALSE, warning=FALSE,message= FALSE}
+datosnum=(Datos_Agrupamiento[,c("Prom_D_madre","Prom_N_buena","Prom_Navidad","Prom_Feria_Flores",  "Prom_1_enero")])
+pairs(datosnum)
+```
+
+
+# Análisis descriptivo
+
+
+Comenzamos a través de un summary que nos permita identificar condiciones particulares de cada una de las variables.
+
+## Análisis de Variables Actuales (Tiempo) {.tabset .tabset-fade .tabset-pills}
+
+### Análisis por día de la semana 
+
+Analizamos como cambia la cantidad de Accidentes por día de la semana
+
+```{r echo = FALSE, warning=FALSE,message= FALSE}
+Dias_Sem <- colSums(Datos_Agrupamiento[ ,2:8])
+d1<-data.frame(DIA=names(Dias_Sem),X=Dias_Sem)
+arrange(d1, desc(X))
+d1$DIA<-factor(d1$DIA, levels = unique(d1$DIA)[order(d1$X, decreasing = FALSE)])
+fig2 <- d1 %>%
+  plot_ly(
+    x = d1$DIA,
+    y = d1$X,
+    type = "bar",
+    color = d1$DIA,
+    colors = c("#05668d","#d62828","#f77f00","#00a896"))
+fig2 <- fig2 %>% layout(title = "Promedio de Accidentalidad por dia de la semana",
+         xaxis = list(title = "DiaSemana"),
+         yaxis = list(title = "Cantidad"))
+fig2
+```
+
+Como se puede observar los viernes corresponde al día de más accidentalidad en la ciudad teniendo en cuenta sus actividades e industria, adicional a esto también, identificamos que los domingos al bajar la actividad laboral y ser el día considerado de descanso podemos encontrar baja circulación en las calles, lo que hace que sea  el día con el # de accidentes más bajo.
+
+### Análisis Mensual 
+
+Ahora analicemos la accidentalidad presentada mes a mes que nos permita identificar en que momento del años se presentan picos considerables en esta medición.
+ 
+```{r echo = FALSE, warning=FALSE,message= FALSE}
+AccxTP2 <- colSums(Datos_Agrupamiento[ ,9:20])
+d2<-data.frame(MES=names(AccxTP2),X=AccxTP2)
+d2$MES<-factor(d2$MES, levels = unique(d2$MES)[order(d2$X, decreasing = FALSE)])
+fig4 <- d2 %>%
+  plot_ly(
+    x = d2$MES,
+    y = d2$X,
+    type = "bar",
+    color = d2$MES,
+    colors = c("#05668d","#d62828","#f77f00","#00a896"))
+fig4 <- fig4 %>% layout(title = "Promedio de Accidentalidad por MES",
+         xaxis = list(title = "MES"),
+         yaxis = list(title = "Cantidad"))
+fig4
+```
+
+Cuando analizamos a nivel de mes encontramos elementos muy particulares como los meses de enero donde los promedios de accidentalidad en los 5 años son más bajos que los del resto de meses en el año, contemplando la baja actividad comercial y que gran parte de las personas en la ciudad se encuentran por fuera, adicional a esto encontramos que agosto es el mes con un promedio de accidentalidad más alto, motivado principalmente por los eventos de ciudad como feria de flores fecha en la cual ampliaremos más el estudio en el siguiente análisis. 
+
+### Análisis Anual
+
+```{r echo = FALSE, warning=FALSE,message= FALSE}
+AccxTP3 <- colSums(Datos_Agrupamiento[ ,27:31])
+d3<-data.frame(ANO=names(AccxTP3),X=AccxTP3)
+d3$ANO<-factor(d3$ANO, levels = unique(d3$ANO)[order(d3$X, decreasing = FALSE)])
+fig5 <- d3 %>%
+  plot_ly(
+    x = d3$ANO,
+    y = d3$X,
+    type = "bar",
+    color = d3$ANO,
+    colors = c("#05668d","#d62828","#f77f00","#00a896"))
+fig5 <- fig5 %>% layout(title = "Promedio de Accidentalidad por Año",
+         xaxis = list(title = "AÑO"),
+         yaxis = list(title = "Cantidad de Accidentes"))
+fig5
+```
+
+### Analisis de Variables Actuales (Gravedad)
+
+```{r echo = FALSE, warning=FALSE,message= FALSE}
+d4 <- colMeans(Datos_Agrupamiento[ ,23:26])
+d4<-data.frame(v1=names(d4),X=d4)
+d4$ANO<-factor(d4$v1, levels = unique(d4$v1)[order(d4$X, decreasing = FALSE)])
+fig6 <- d4 %>%
+  plot_ly(
+    x = d4$v1,
+    y = d4$X,
+    type = "bar",
+    color = d4$v1,
+    colors = c("#05668d","#d62828","#f77f00","#00a896"))
+fig6 <- fig6 %>% layout(title = "Promedio de Accidentalidad por Año",
+         xaxis = list(title = "AÑO"),
+         yaxis = list(title = "Cantidad de Accidentes"))
+fig6
+```
+
+
+La bases de datos fue almacena y a partir de este punto, siempre se leyó dicha base de datos. 
+
+```{r, warning=FALSE,message= FALSE}
+data <- read.csv('datos_bd_prom.csv', sep = ';', header = TRUE, stringsAsFactors = TRUE)
+```
+
+Son indexados los nombres de los barrios a cada fila. La varible *Barrio* es eliminada del dataframe.
+
+```{r, warning=FALSE,message= FALSE}
+# Se guarda la variable Barrio en un vector
+barrios <- data$Barrio
+# Indexación
+row.names(data) <- data$Barrio
+# Eliminación de la variable del dataframe
+data$Barrio <- NULL
+```
+
+Generación de variables dummies.  
+
+```{r, warning=FALSE,message= FALSE}
+data <- dummy_cols(data, select_columns = 'estrato')
+# Eliminación de la variable original
+estrato <- data$estrato
+data$estrato <- NULL
+row.names(data) <- barrios
+
+```
+
+# Agrupamientos
+
+El parecido o similitud es cuantificable aplicando coeficientes de similitud. Con el uso de estos coeficientes, pudo determinarse la similitud respecto a cada posible dato de barrio de la matriz básica de datos. 
+
+Según la clasificación de Sneath y Sokal (1973), en esta aproximación fueron usados coeficientes de distancia.
+
+Las relaciones entre todos los barrios, fueron determinadas y sintetizadas a través de técnicas de análisis de matrices de similitud.
+
+El análisis de agrupamientos a través de reglas arbitrarias, formó grupos de barrios que se asociaron por su grado de similitud. Teniendo en cuenta, el escaso acuerdo para reconocer los límites entre grupos y la enorme cantidad de técnicas propuestas, esta aproximación es correcta en la medida que es útil en el problema planteado.
+
+
+## Agrupamientos jerarquicos
+
+Las técnicas *grupo par* son las técnicas más sencillas y utilizadas. Está técnica hace parte a un grupo de técnicas conocidas por ser exclusivas, jerárquicas, aglomerativas, secuenciales, directas  y no supervisadas. 
+
+*Grupo par* es una técnica en la cual un barrio o unidad solo puede ser admitida a un solo grupo por nivel. Esto se traduce a que los grupos formados en cualquier etapa del agrupamiento solo contienen dos miembros.
+
+### Estandarización de la matriz de datos
+
+La función *scale()* fue usada para relizar la estandarización de todas las variables en el marco de los datos. Esto se traduce en la generación de un nuevo set de datos donde las medias son iguales a cero y las varianzas iguales a uno. 
+
+```{r, warning=FALSE,message= FALSE}
+z <- scale(data,center = TRUE,scale = TRUE)
+```
+
+### Cálculo de la matriz de similitud
+
+Fue usada la distancia euclidiana y la distancia de Manhattan.
+
+```{r, warning=FALSE,message= FALSE}
+Se <- dist(data, method = "euclidean")
+Sm <- dist(data, method = "manhattan")
+```
+
+### Selección de método de agrupamiento
+
+Se construyó una nueva matriz de similitud derivada de la matriz de similitud original. Para ello, se usó la función *hclust()* y el argumento *method* para indicar los métodos de agrupamiento a aplicar. Se usaron como métodos:  
+
+* Ligamiento simple
+
+* Ligamiento completo
+
+* Ligamiento promedio
+
+
+```{r, warning=FALSE,message= FALSE}
+# Cluster generados a partir de la matriz de distancias euclidianas
+clusterSe <- hclust(Se, method = "single")
+clusterCe <- hclust(Se, method = "complete")
+clusterAe <- hclust(Se, method = "average")
+
+# Cluster generados a partir de la matriz de distancias de Manhattan
+clusterSm <- hclust(Sm, method = "single")
+clusterCm <- hclust(Sm, method = "complete")
+clusterAm <- hclust(Sm, method = "average")
+```
+
+Existe la imposibilidad de que el dendograma sea un reflejo exacto de la matriz de similitud, pues necesariamente las relaciones son distorsionadas al realizar una representación bidimensional de la matriz. 
+
+Buscando que el dendograma representara en mayor grado los valores de la matriz de similitud, se determinó el coeficiente de correlación cofenética. Una correlación alta es señal de escasa distorsión, por lo que valores superiores a 0.80 indican un buen dendograma.
+
+```{r, warning=FALSE,message= FALSE}
+mat.cofSe <- cophenetic(clusterSe)
+c1<-cor(mat.cofSe, Se, method = "pearson")
+
+mat.cofCe <- cophenetic(clusterCe)
+c2<-cor(mat.cofCe, Se, method = "pearson")
+
+mat.cofAe <- cophenetic(clusterAe)
+c3<-cor(mat.cofAe, Se, method = "pearson")
+
+mat.cofSm <- cophenetic(clusterSm)
+c5<-cor(mat.cofSm, Sm, method = "pearson")
+
+mat.cofCm <- cophenetic(clusterCm)
+c6<-cor(mat.cofCm, Sm, method = "pearson")
+
+mat.cofAm <- cophenetic(clusterAm)
+c7<-cor(mat.cofAm, Sm, method = "pearson")
+
+```
+
+Los mejores coeficientes fueron `r round(c3,2)` para la matriz de similitud de distancias Euclidianas y `r round(c7,2)` para la matriz con distancia de Manhattan. En ambos casos la técnica de ligamiento promedio fue la que originó menor distorsión. 
+
+### Selección de número de grupos
+
+Los dos mejores clusters fueron los analizados a través del dendograma. Se buscaba generar de 4 a 7 grupos, pues de esta forma los clusters podrían dar una mejor idea del grado de accidentalidad.
+
+```{r echo = FALSE, warning=FALSE,message= FALSE}
+# Cluster por ligamiento promedio usando matriz de distancia euclidiana
+plot(clusterAe, main = "Cluster1: Distancia:Euclidiana, Metodo:L.Promedio",labels = FALSE)
+
+# Cluster por ligamiento promedio usando matriz de distancia de Manahattan
+plot(clusterAm, main = "Cluster2: Distancia:Manhattan, Metodo:L.Promedio", labels = FALSE)
+
+```
+
+
+```{r, warning=FALSE,message= FALSE}
+# Cluster por agrupamiento 1 
+clases_e <- cutree(clusterAe,k = 4)
+ClasesE <- as.data.frame(clases_e)
+# Cluster por agrupamiento 2
+clases_m <- cutree(clusterAm,k = 4)
+ClasesM <- as.data.frame(clases_m)
+
+```
+
+```{r echo = FALSE, warning=FALSE,message= FALSE}
+ClasesE$clase <- ifelse(ClasesE$clases_e == 1, 'G1',ifelse(ClasesE$clases_e == 2,'G2',
+                                                           ifelse(ClasesE$clases_e == 3,'G3','G4')))
+
+ClasesM$clase <- ifelse(ClasesM$clases_m == 1, 'G1',ifelse(ClasesE$clases_e == 2,'G2',
+                                                           ifelse(ClasesE$clases_e == 3,'G3','G4')))
+```
+
+### Generación de grupos de barrios
+
+Fueron generados 4,5,6 y 7 grupos. Sin embargo, los dendogramas siempre arrojaron un grupo con un único miembro que correspondía al barrio con la mayor accidentalidad de la ciudad; por lo que se exploró otra técnica que pudiera agrupar los barrios de otra manera.  
+
+A continuación se reporta la distribución de barrios por grupo para los dos dendogramas elegidos con 4 grupos.
+ 
+
+```{r echo = FALSE, warning=FALSE,message= FALSE}
+A <- aggregate(. ~ClasesE$clase, data = ClasesE, FUN= length)
+B <- aggregate(. ~ClasesM$clase, data = ClasesM, FUN= length)
+
+
+fA <- A %>%
+  plot_ly( x = A$`ClasesE$clase`,
+           y = A$clases,
+           type = 'bar',
+           color = A$`ClasesE$clase`,
+           colors = c("#05668d","#d62828","#f77f00","#00a896"),
+           showlegend = FALSE)
+
+fA <- fA %>% layout(xaxis = list(title = 'D.Euclidiana y L.Promedio'),
+                    yaxis = list(title ='Barrios/grupo'),
+                    yaxis = list(title ='Cluster 1'))
+
+fB <- B %>%
+  plot_ly( x = B$`ClasesM$clase`,
+           y = B$clases_m,
+           type = 'bar',
+           color = B$`ClasesM$clase`,
+           colors = c("#05668d","#d62828","#f77f00","#00a896"),
+           showlegend = TRUE)
+
+fB <- fB %>% layout(title = 'Agrupamientos por Grupo Par',
+                    xaxis = list(title = 'D.Manhattan y L.Promedio'),
+                    yaxis = list(title ='Cluster 2'),
+                    legend = list(orientation = "l",   # show entries horizontally
+                     xanchor = "center", 
+                     y = 0.5,
+                     x= 0.8))
+
+subplot(fA,fB,shareY = TRUE,titleX = TRUE)
+
+
+```
+
+## K-medias
+
+Contrario a los grupos pares, en este método el número de grupos se establece *a priori* del análisis (supervisado). En este caso a partir de una matriz de datos, se determina el agrupamiento  de los barrios en K grupos, de forma que los barrios en un grupo son más cercanos entre si que a otros barrios de otros grupos.  Este método también es considerado no jerárquico, no aglomerativo y no divisivo. 
+
+### Estandarización de la matriz de datos
+
+K-medias puede aplicarse tanto a la matriz original como a una matriz estandarizada. En este caso particular se sabe que muchas variables en la matriz original tienen diferentes unidades e incluso hay variables que representan variables categóricas, por tal razón se opta por realizar estandarización.  
+
+```{r}
+z <- scale(data,center = TRUE,scale = TRUE)
+```
+
+### Selección de número óptimo de clusters o grupos
+
+Si bien el número de grupos es determinado *a priori*, se evaluó cuál es el número óptimo de grupos utilizando el *método del codo*. Este método analiza la variación intra-grupo como función de la cantidad de grupos: el número óptimo será aquel que, al ir subdiviendo los grupos, los subgrupos resultantes no disminuyen de manera considerable la variación intra-grupo. 
+
+```{r , warning=FALSE,message= FALSE}
+fA <- fviz_nbclust(z, FUNcluster = kmeans, method = "wss", k.max = 15,
+             linecolor = "#05668d") +xlab("Número de grupos")+ ylab("Variación intra-grupo")
+fB <- fviz_nbclust(z, FUNcluster = kmeans, method = "wss", k.max = 7,
+             linecolor = "#006d77") +xlab("Número de grupos")+ ylab("Variación intra-grupo")
+
+subplot(fA,fB,shareX = TRUE,shareY = TRUE)
+```
+
+Las gráficas anteriores son claras en mostrar una disminución considerable entre k=1 y K=4. Además se observa una tendencia en la gráfica a partir del grupo 6, donde empieza a 'aplanarse'.
+
+### Generación de grupos de barrios
+
+Se determina que serán generados 6 centros, es decir que K=6. Se considera para aplicar el modelo 1000 configuraciones iniciales de centroides aleatorios dadas por el argumento *nstart*, ya que una sola configuración inicial puede no ser óptima. 
+
+```{r , warning=FALSE,message= FALSE}
+set.seed(2020)
+kmedias_6 <- kmeans(z,
+                  centers = 6,
+                  iter.max = 1000,
+                  nstart = 1000)
+```
+
+Como resultado se obtuvo un porcentaje de variación explicada por el agrupamiento de 79.9%, calculada como variación entre grupos sobre la variación total. 
+
+Finalmente, para idenificar puntualmente a que grupo fue asignado cada barrio, se usó el siguiente comando:
+
+```{r , warning=FALSE,message= FALSE}
+#grupo_K6 <- kmedias_6$cluster
+#data$clase_k6 <- grupo_K6
+
+```
+
+El tamaño de cada grupo generado se explica a través del siguiente grafico de barras. 
+
+```{r echo = FALSE, warning=FALSE,message= FALSE}
+#data$grupos <- ifelse(data$clase_k6== 1, 'G1',ifelse(data$clase_k6 == 2,'G2',
+#                                                          ifelse(data$clase_k6 == 3,'G3',
+#                                                                  ifelse(data$clase_k6 == 4, 'G4',
+#                                                                         ifelse(data$clase_k6 == 5, #'G5','G6')))))
+```
+
+```{r echo = FALSE, warning=FALSE,message= FALSE}
+#data$clase <- ifelse(data$grupos== 'G4', '1.Muy alto',ifelse(data$grupos == 'G5','2.Alto',
+#                                                           ifelse(data$grupos == 'G3','3.Medio alto',
+#                                                                  ifelse(data$grupos == 'G6', '4.Medio',
+#                                                                       ifelse(data$grupos == 'G2', #'5.Bajo','6.Muy bajo')))))
+
+#clase6 <- ifelse(data$grupos== 'G4', '1.Muy alto',ifelse(data$grupos == 'G5','2.Alto',
+#                                                           ifelse(data$grupos == 'G3','3.Medio alto',
+#                                                                  ifelse(data$grupos == 'G6', '4.Medio',
+#                                                                         ifelse(data$grupos == 'G2', #'5.Bajo','6.Muy bajo')))))
+```
+
+```{r echo = FALSE, warning=FALSE,message= FALSE}
+#write.csv(data,'datafinal.csv')
+```
+
+```{r echo = FALSE, warning=FALSE,message= FALSE}
+data <- read.csv('datafinal.csv', sep = ',', header = TRUE, stringsAsFactors = TRUE,row.names = 1)
+```
+
+```{r echo = FALSE, warning=FALSE,message= FALSE}
+A <- aggregate( clase ~ grupos, data = data, FUN= length)
+
+
+
+fA <- A %>%
+  plot_ly( x = A$grupos,
+           y = A$clase,
+           type = 'bar',
+           color = A$grupos,
+           colors = c("#003049","#d62828","#f77f00","#fcbf49",'#028090','#eae2b7'),
+           showlegend = TRUE)
+
+fA <- fA %>% layout(title = 'k-Medias con k=6',
+                    xaxis = list(title = 'Grupos'),
+                    yaxis = list(title ='Barrios/grupos'),
+                    yaxis = list(title ='Clusters'))
+fA
+
+```
+
+
+# Conclusiones
+
+Los grupos generados se analizaron nuevamente a la luz de la variables originales y se determinó que los barrios se podian clasificar por accidentalidad asi:
+
+* 10 barrios pertenecen a *Muy alto*. 
+
+* 22 barrios pertencen a *Alto*
+
+* 62 barrios pertenecen a *Medio alto*. 
+
+* 94 barrios pertencen a *Medio*
+
+* 99 barrios pertenecen a *Bajo*. 
+
+* 25 barrios pertencen a *Muy bajo*
+
+La clasificación de los grupos se realizó con respecto al promedio de accidentalidad que se presentó durante los años evaluados, bajo diferentes variables: accidentalidad por día, por mes, por año, por día especial o festivo, entre otras. 
+
+
+## Accidentalidad semanal  {.tabset .tabset-fade .tabset-pills}
+
+Después del previo análisis descriptivo sobre el total de datos, se encontró que los grupos tienen una tendencia muy clara para todos los días de la semana y se corresponde con la clasificación asignada; donde el promedio de accidentalidad los viernes es el mas alto de la semana y el domingo siempre es el mas bajo, sin importar el grado de accidentalidad que tenga cada grupo. 
+
+### Lunes
+
+```{r echo = FALSE, warning = FALSE , message= FALSE}
+AccxL <- aggregate(Lunes.Promedio ~clase, data = data, FUN= mean)
+
+fig1 <- AccxL %>%
+  plot_ly( x = AccxL$clase,
+           y = AccxL$Lunes.Promedio,
+           type = 'bar',
+           color = AccxL$clase,
+           colors = c("#CD1313","#D64222","#DF7131","#E8A13F","#F1D04E","#FAFF5D"))
+
+fig1 <- fig1 %>% layout(title = 'Accidentalidad promedio los Lunes',
+                        xaxis = list(title = 'Grupos'),
+                        yaxis = list(title ='Accidente/día'))
+
+fig1
+```
+
+
+### Martes
+
+```{r echo = FALSE, warning = FALSE , message= FALSE}
+AccxMa <- aggregate(Martes.Prome ~clase, data = data, FUN= mean)
+
+fig2 <- AccxMa %>%
+  plot_ly( x = AccxMa$clase,
+           y = AccxMa$Martes.Prome,
+           type = 'bar',
+           color = AccxMa$clase,
+           colors = c("#CD1313","#D64222","#DF7131","#E8A13F","#F1D04E","#FAFF5D"))
+
+fig2 <- fig2 %>% layout(title = 'Accidentalidad promedio los Martes',
+                        xaxis = list(title = 'Grupos'),
+                        yaxis = list(title ='Accidente/día'))
+
+fig2
+```
+
+### Miercoles
+
+```{r echo = FALSE, warning = FALSE , message= FALSE} 
+AccxMi <- aggregate(data$Miercoles.prom ~clase, data = data, FUN= mean)
+
+fig3 <- AccxMi %>%
+  plot_ly( x = AccxMi$clase,
+           y = AccxMi$`data$Miercoles.prom`,
+           type = 'bar',
+           color = AccxMi$clase,
+           colors = c("#CD1313","#D64222","#DF7131","#E8A13F","#F1D04E","#FAFF5D"))
+
+fig3 <- fig3 %>% layout(title = 'Accidentalidad promedio los Miercoles',
+                        xaxis = list(title = 'Grupos'),
+                        yaxis = list(title ='Accidente/día'))
+fig3
+```
+
+### Jueves
+
+```{r echo = FALSE, warning = FALSE , message= FALSE} 
+AccxJ <- aggregate(data$Jueves.Prom ~clase, data = data, FUN= mean)
+
+fig4 <- AccxJ %>%
+  plot_ly( x = AccxJ$clase,
+           y = AccxJ$`data$Jueves.Prom`,
+           type = 'bar',
+           color = AccxJ$clase,
+           colors = c("#CD1313","#D64222","#DF7131","#E8A13F","#F1D04E","#FAFF5D"))
+
+fig4 <- fig4 %>% layout(title = 'Accidentalidad promedio los Jueves',
+                        xaxis = list(title = 'Grupos'),
+                        yaxis = list(title ='Accidente/día'))
+fig4
+```
+
+### Viernes
+
+```{r echo = FALSE, warning = FALSE , message= FALSE} 
+AccxV <- aggregate(data$Viernes.Prome ~clase, data = data, FUN= mean)
+
+fig5 <- AccxV %>%
+  plot_ly( x = AccxV$clase,
+           y = AccxV$`data$Viernes.Prome`,
+           type = 'bar',
+           color = AccxV$clase,
+           colors = c("#CD1313","#D64222","#DF7131","#E8A13F","#F1D04E","#FAFF5D"))
+
+fig5 <- fig5 %>% layout(title = 'Accidentalidad promedio los Viernes',
+                        xaxis = list(title = 'Grupos'),
+                        yaxis = list(title ='Accidente/día'))
+fig5
+```
+
+
+### Sabado
+
+```{r echo = FALSE, warning = FALSE , message= FALSE} 
+AccxS <- aggregate(data$Sabado.Promedio ~clase, data = data, FUN= mean)
+
+fig6 <- AccxS %>%
+  plot_ly( x = AccxS$clase,
+           y = AccxS$`data$Sabado.Promedio`,
+           type = 'bar',
+           color = AccxS$clase,
+           colors = c("#CD1313","#D64222","#DF7131","#E8A13F","#F1D04E","#FAFF5D"))
+
+fig6 <- fig6 %>% layout(title = 'Accidentalidad promedio los Sabados',
+                        xaxis = list(title = 'Grupos'),
+                        yaxis = list(title ='Accidente/día'))
+fig6
+```
+
+### Domingo
+
+```{r echo = FALSE, warning = FALSE , message= FALSE} 
+AccxD <- aggregate(data$Domingo.Prome ~clase, data = data, FUN= mean)
+
+fig7 <- AccxD %>%
+  plot_ly( x = AccxD$clase,
+           y = AccxD$`data$Domingo.Prome`,
+           type = 'bar',
+           color = AccxD$clase,
+           colors = c("#CD1313","#D64222","#DF7131","#E8A13F","#F1D04E","#FAFF5D"))
+
+fig7 <- fig7 %>% layout(title = 'Accidentalidad promedio los Domingos',
+                        xaxis = list(title = 'Grupos'),
+                        yaxis = list(title ='Accidente/día'))
+fig7
+```
+
+
+
+## ¿Qué se sabe de estos grupos y sus barrios?  {.tabset .tabset-fade .tabset-pills}
+
+La accidentalidad puede estar afectadas por elementos importantes que se identificaron en la matriz de agrupamiento como semáforos e infraestructura, estrato, Gravedad de los incidentes, días festivos y días especiales, que lograban mediante el análisis, justificar el nivel de accidentalidad evaluado por grupo. 
+
+### Infraestructura: Semáforos
+
+Los semáforos son los encargados de regular el flujo vehicular, lo que los convierte en una medida directa de flujo y riesgos de accidentes de tránsito, por lo que al analizar esta variable dentro de los grupos, se encuentra que su cantidad promedio por barrio depende directamente del grado de accidentalidad de este, justificando además uso de estos es esas zonas.  
+
+```{r echo = FALSE, warning = FALSE , message= FALSE} 
+
+fig8 <- data %>%
+  plot_ly( x = data$clase,
+           y = data$semaforos,
+           type = 'box',
+           color = data$clase,
+           colors = c("#CD1313","#D64222","#DF7131","#E8A13F","#F1D04E","#FAFF5D"))
+
+fig8 <- fig8 %>% layout(title = 'Distribución de semáforos en Medellín',
+                        xaxis = list(title = 'Grupos', categoryarray = c('Muy alto','Alto','Medio alto','Medio','Bajo','Muy bajo')),
+                        yaxis = list(title ='Semaforos'))
+fig8
+
+```
+
+### Estrato
+
+Cuando se analiza la variable estrato se encuentra que el promedio de estrato para los barrios de Medellín es 3, lo que no difiere en ninguno de los 3 primeros grupos. Cuando se valida en los grupos de *Bajo* y *Muy bajo* encontramos que esta baja accidentalidad se relaciona por el estrato, y explicada quizá por la falta de vías e infraestructura que permita la movilización de gran flujo de vehículos por la zona; adicional a esto, al georreferenciarse se nota que estos barrios suelen ubicarse principalmente en las periferias de la ciudad. 
+
+```{r echo = FALSE, warning = FALSE , message= FALSE} 
+clase6 <- ifelse(data$grupos== 'G4', '1.Muy alto',ifelse(data$grupos == 'G5','2.Alto',
+                                                           ifelse(data$grupos == 'G3','3.Medio alto',
+                                                                  ifelse(data$grupos == 'G6', '4.Medio',
+                                                                         ifelse(data$grupos == 'G2', '5.Bajo','6.Muy bajo')))))
+
+AccxEstrato <- data.frame(cbind(estrato,clase6))
+
+fig8 <- AccxEstrato  %>%
+  plot_ly( x = AccxEstrato$clase6 ,
+           y = AccxEstrato$estrato,
+           type = 'box',
+           color = AccxEstrato$clase,
+           colors = c("#CD1313","#D64222","#DF7131","#E8A13F","#F1D04E","#FAFF5D"))
+
+fig8 <- fig8 %>% layout(title = 'Estratificación por grupos de accidentalidad',
+                        xaxis = list(title = 'Grupos', categoryarray = c('Muy alto','Alto','Medio alto','Medio','Bajo','Muy bajo')),
+                        yaxis = list(title ='Estrato socioecónimico'))
+
+fig8
+```
+
+### Gravedad de incidentes
+
+Las clasificaciones de accidente por gravedad, se conservan en los grupos, siendo solo daños y heridos las más altas en todos los grupos de accidentalidad, en comparación con las muertes. 
+
+```{r echo = FALSE, warning=FALSE,message= FALSE}
+Victimas <- aggregate(cbind(Herido.Mensual,Muerto.Mensual,Solo.Daños.Mes) ~ clase, data = data, FUN= mean)
+```
+
+
+```{r echo = FALSE, warning = FALSE , message= FALSE} 
+fig7 <- Victimas %>%
+  plot_ly( x = Victimas$clase,
+           y = Victimas$Herido.Mensual,
+           type = 'bar',
+           color = Victimas$clase,
+           colors = c("#CD1313","#D64222","#DF7131","#E8A13F","#F1D04E","#FAFF5D"),
+           showlegend = FALSE)
+
+fig7 <- fig7 %>% layout(xaxis = list(title = 'Heridos'),
+                        yaxis = list(title ='Accidente/mes'))
+
+
+fig8 <- Victimas %>%
+  plot_ly( x = Victimas$clase,
+           y = Victimas$Muerto.Mensual,
+           type = 'bar',
+           color = Victimas$clase,
+           colors = c("#CD1313","#D64222","#DF7131","#E8A13F","#F1D04E","#FAFF5D"))
+
+fig8 <- fig8 %>% layout(title = 'Gravedad de incidentes mensuales',
+                        xaxis = list(title = 'Muertos'),
+                        yaxis = list(title ='Accidente/mes'))
+
+fig9 <- Victimas %>%
+  plot_ly( x = Victimas$clase,
+           y = Victimas$Herido.Mensual,
+           type = 'bar',
+           color = Victimas$clase,
+           colors = c("#CD1313","#D64222","#DF7131","#E8A13F","#F1D04E","#FAFF5D"),
+           showlegend = FALSE)
+
+fig9 <- fig9 %>% layout(xaxis = list(title = 'Solo Daños'),
+                        yaxis = list(title ='Incidente/mes'))
+
+f9 <- subplot(fig9,fig7,fig8,shareY = TRUE, titleX = TRUE,titleY = TRUE)
+f9
+
+```
+
+### Dias festivos y especiales en Medellín
+
+Finalmente, identificar fechas o eventos de ciudad particulares, posibilita que puedan destinarse esfuerzos y recursos en la solución de problemas de movilidad en esas fechas. Como parte del análisis se validaron algunas fechas y se  compararon con dos días importantes de la semana (el más accidentado y el menos accidentado), buscando identificar si estas fechas son importantes y particulares para los incidentes de tránsito en la ciudad de Medellín. Se infiere por lo observado, que días como  el día de la madre y que los días en los que transcurre la feria de flores, pueden compararse con la actividad de un viernes e inclusive, en muchas ocasiones superarla;  y que el 1 de enero y 25 de diciembre, pueden compararse con los incidentes que ocurren en un domingo promedio. 
+
+```{r echo = FALSE, warning=FALSE,message= FALSE}
+ds <- aggregate(cbind(data$Viernes.Prome, data$Prom_1_enero, data$Prom_D_madre, data$Prom_Feria_Flores, data$Prom_N_buena, data$Prom_Navidad, data$Domingo.Prome) ~ clase, data = data, FUN= mean)
+
+```
+
+```{r echo = FALSE, warning = FALSE , message= FALSE} 
+f1 <- ds %>%
+  plot_ly( x = ds$clase,
+           y = ds$V1,
+           type = 'bar',
+           color = ds$clase,
+           colors = c("#CD1313","#D64222","#DF7131","#E8A13F","#F1D04E","#FAFF5D"),
+           showlegend = FALSE)
+
+f1 <- f1 %>% layout(xaxis = list(title = 'Viernes promedio'),
+                    yaxis = list(title ='Accidentes/día'))
+
+f2 <- ds %>%
+  plot_ly( x = ds$clase,
+           y = ds$V2,
+           type = 'bar',
+           color = ds$clase,
+           colors = c("#CD1313","#D64222","#DF7131","#E8A13F","#F1D04E","#FAFF5D"),
+           showlegend = FALSE)
+
+f2 <- f2 %>% layout(xaxis = list(title = '1 Ene.'),
+                    yaxis = list(title ='Accidentes/día'))
+
+f3 <- ds %>%
+  plot_ly( x = ds$clase,
+           y = ds$V3,
+           type = 'bar',
+           color = ds$clase,
+           colors = c("#CD1313","#D64222","#DF7131","#E8A13F","#F1D04E","#FAFF5D"),
+           showlegend = FALSE)
+
+f3 <- f3 %>% layout(xaxis = list(title = 'Dia madre'),
+                    yaxis = list(title ='Accidentes/día'))
+
+f4 <- ds %>%
+  plot_ly( x = ds$clase,
+           y = ds$V4,
+           type = 'bar',
+           color = ds$clase,
+           colors = c("#CD1313","#D64222","#DF7131","#E8A13F","#F1D04E","#FAFF5D"),
+           showlegend = FALSE)
+
+f4 <- f4 %>% layout(xaxis = list(title = 'Día F.Flores'),
+                    yaxis = list(title ='Accidentes/día'))
+
+f5 <- ds %>%
+  plot_ly( x = ds$clase,
+           y = ds$V5,
+           type = 'bar',
+           color = ds$clase,
+           colors = c("#CD1313","#D64222","#DF7131","#E8A13F","#F1D04E","#FAFF5D"),
+           showlegend = FALSE)
+
+f5 <- f5 %>% layout(xaxis = list(title = '23 Dic.'),
+                    yaxis = list(title ='Accidentes/día'))
+
+f6 <- ds %>%
+  plot_ly( x = ds$clase,
+           y = ds$V6,
+           type = 'bar',
+           color = ds$clase,
+           colors = c("#CD1313","#D64222","#DF7131","#E8A13F","#F1D04E","#FAFF5D"),
+           showlegend = FALSE)
+
+f6 <- f6 %>% layout(xaxis = list(title = '24 Dic.'),
+                    yaxis = list(title ='Accidentes/día'))
+
+f7 <- ds %>%
+  plot_ly( x = ds$clase,
+           y = ds$V7,
+           type = 'bar',
+           color = ds$clase,
+           colors = c("#CD1313","#D64222","#DF7131","#E8A13F","#F1D04E","#FAFF5D"),
+           showlegend = TRUE)
+
+
+f7 <- f7 %>% layout(title = 'Días especiales en el año',
+                    xaxis = list(title = 'Domingo promedio'),
+                    yaxis = list(title ='Accidentes/día'),
+                    legend = list(orientation = "h",   # show entries horizontally
+                     xanchor = "center", 
+                     y = 1,
+                     x= 0.5))
+
+subplot(f1,f2,f3,f4,f5,f6,f7,shareY = TRUE,titleX = TRUE)
+
+```
+
+# Enlaces de interés
+
+* [Preprocesamiento](https://rpubs.com/IsabelCorrea/655887) de base de datos de MEData
+
+* GitHub: [Movimed_GitHub](https://github.com/cagallegori/Accidentalidad-AP)
+
+* Video Promocional: [MoviMed(Analítica predictiva)](https://www.youtube.com/watch?v=Usfx9E-AxeI) 
+
+* Aplicación: [MoviMed](https://cagallegori.shinyapps.io/MoviMed/)
+
+* Proceso de [predicción de la accidentalidad en la ciudad de Medellín](https://rpubs.com/IsabelCorrea/655886) con base en los años 2014-2018 
+
+
+
+# Referencias
+
+APODACA, F. X. P. M. J., & CRISCI, J. V. ANÁLISIS MULTIVARIADO PARA DATOS BIOLÓGICOS.
+
+James, G., Witten, D., Hastie, T., & Tibshirani, R. (2013). An introduction to statistical learning (Vol. 112, p. 18). New York: springer.
+
+Peng, R. D. (2016). R programming for data science. Leanpub.
+
+Zumel, N., Mount, J., & Porzak, J. (2014). Practical data science with R (pp. 101-104). Shelter Island, NY: Manning.
+
+
+

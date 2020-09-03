@@ -8,7 +8,13 @@ A partir de estos datos y el respectivo tratamiento y análisis de los mismos se
 - Predecir los accidentes entre 2019 y 2020 en una ventana y una resolución temporal definidas por el usuario.
 - Comprender el comportamiento de la accidentalidad en cada Barrio de Medellín a partir de un mapa de agrupamiento de barrios en 6 categorias.
 
-Además, este repositorio contiene los 3 reportes de limpieza, predicción y agrupamiento en versión .Rmd y .html en los que se puede consultar con detalle el trabajo desarrollado con los datos usados en la aplicación.
+En este <a href="https://www.youtube.com/watch?v=Usfx9E-AxeI">video</a> se explican los beneficios de usar la aplicación y el cómo se usa.
+
+Además, este repositorio contiene 3 reportes en versión .Rmd y .html con sus respectivos datos en los que se puede consultar con detalle el trabajo desarrollado con los datos usados en la aplicación. Estos también se pueden consultar en los siguientes enlaces:
+
+- <a href="https://rpubs.com/IsabelCorrea/655887">Preprocesamiento y preparación de datos</a> para modelos de predicción y agrupamiento de la accidentalidad en Medellín
+- <a href=https://rpubs.com/IsabelCorrea/655886>Predicción de la accidentalidad</a> en la ciudad de Medellín basados en los años comprendidos en el período 2014-2018
+- <a href="https://rpubs.com/IsabelCorrea/655921">Clasificación de los barrios de Medellín</a> según su accidentalidad
 
 El trabajo que se encuentra en este repositorio fue desarrollado por:
 Daniel Ceballos, Maria Isabel Correa, Carolina Gallego, Esteban Mejía & Daniel Tejada, estudiantes de la Especialización en Analítica de la Facultad de Minas.
